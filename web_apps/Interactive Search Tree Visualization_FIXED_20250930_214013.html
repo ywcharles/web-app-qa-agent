@@ -1,0 +1,906 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Search Tree Visualization</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+
+    <style>
+        :root {
+            --primary-color: #3F51B5;
+            --primary-dark: #303F9F;
+            --accent-color: #FF4081;
+            --text-color: #212121;
+            --background-color: #f5f5f5;
+            --surface-color: #ffffff;
+            --node-color: #BDBDBD;
+            --node-highlight-color: #FFC107;
+            --node-path-color: #90CAF9;
+            --node-delete-color: #f44336;
+            --node-rotate-pivot-color: #4CAF50;
+            --shadow-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            --shadow-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            font-size: 16px;
+            overflow-x: hidden;
+        }
+
+        mjx-container {
+            font-size: 1em !important;
+            text-align: center !important;
+        }
+
+        #app-container {
+            display: flex;
+            flex-wrap: wrap;
+            min-height: 100vh;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        #control-panel {
+            background-color: var(--surface-color);
+            padding: 24px;
+            box-shadow: var(--shadow-2);
+            flex: 0 0 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #vis-panel {
+            position: relative;
+            flex: 1 1 60%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            min-height: 400px;
+            max-width: 100%;
+        }
+
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+        }
+
+        #animation-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(33, 33, 33, 0.85);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        #animation-status.visible {
+            opacity: 1;
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--primary-dark);
+            margin: 0 0 10px 0;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        .instructions {
+            font-size: 0.95rem;
+            color: #757575;
+            margin: 0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .material-input {
+            font-family: 'Roboto', sans-serif;
+            font-size: 1rem;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            flex-grow: 1;
+            transition: border-color 0.2s;
+        }
+
+        .material-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .material-button {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            box-shadow: var(--shadow-1);
+        }
+        
+        .material-button:disabled {
+            background-color: #E0E0E0;
+            color: #9E9E9E;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-accent {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        .btn-accent:hover:not(:disabled) {
+            background-color: #f50057;
+        }
+        
+        .btn-secondary {
+            background-color: #f1f1f1;
+            color: var(--text-color);
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #e0e0e0;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggle-switch label {
+            font-weight: 500;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .info-box {
+            background-color: #E8EAF6;
+            border-left: 5px solid var(--primary-color);
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .info-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .info-box p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        
+        /* SVG Styles */
+        .node circle {
+            stroke: #333;
+            stroke-width: 2px;
+            transition: fill 0.3s, r 0.3s, transform 0.5s ease-in-out;
+        }
+        
+        .node text {
+            font-size: 18px;
+            font-weight: 500;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            fill: #fff;
+            pointer-events: none;
+        }
+
+        .edge {
+            stroke: #616161;
+            stroke-width: 2px;
+            transition: all 0.5s ease-in-out;
+        }
+        
+        .node, .edge {
+            transition: transform 0.5s ease-in-out, opacity 0.5s;
+        }
+
+        .node-highlight circle {
+            fill: var(--node-highlight-color) !important;
+        }
+        
+        .node-path circle {
+            fill: var(--node-path-color) !important;
+        }
+        
+        .node-delete circle {
+            fill: var(--node-delete-color) !important;
+        }
+        
+        .node-rotate circle {
+            fill: var(--node-rotate-pivot-color) !important;
+        }
+
+        .node-new {
+            animation: fadeIn 0.5s forwards;
+        }
+        
+        .node-remove {
+            animation: fadeOut 0.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.5); }
+        }
+
+        @media (max-width: 900px) {
+            #app-container {
+                flex-direction: column;
+            }
+            #control-panel {
+                flex: 0 0 auto;
+                box-shadow: none;
+                border-bottom: 1px solid #ddd;
+            }
+            #vis-panel {
+                min-height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <div id="control-panel">
+            <h1 class="app-title">Search Tree Explorer</h1>
+            
+            <div class="instructions">
+                <p>Interact with the tree using the controls below. The visualization will update to show the result of each operation.</p>
+            </div>
+
+            <div class="control-group">
+                <div class="input-group">
+                    <input type="number" id="node-value" class="material-input" placeholder="Enter a number (1-99)" min="1" max="99">
+                </div>
+                <div class="input-group">
+                    <button id="add-btn" class="material-button btn-primary">Add</button>
+                    <button id="delete-btn" class="material-button btn-accent">Delete</button>
+                </div>
+                 <button id="reset-btn" class="material-button btn-secondary">Reset to Default</button>
+            </div>
+
+            <div class="toggle-switch">
+                <label for="avl-toggle" title="When enabled, the tree automatically performs rotations to stay balanced. Toggling this will reset the tree.">Balanced (AVL) Tree</label>
+                <label class="switch">
+                    <input type="checkbox" id="avl-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+             <div class="control-group">
+                <button id="mute-btn" class="material-button btn-secondary" style="width: 100%;">Toggle Sounds</button>
+            </div>
+            
+            <div class="instructions">
+                <p><strong>Try this:</strong></p>
+                <ul style="padding-left: 20px; margin: 5px 0 0 0;">
+                    <li>Delete node <strong>4</strong> to see how a node with two children is removed.</li>
+                    <li>Toggle off AVL mode, reset, and add <strong>10, 20, 30, 40</strong> to create a "list-like" tree.</li>
+                    <li>Toggle on AVL mode, reset, and add the same numbers to see how rotations keep the tree balanced.</li>
+                </ul>
+            </div>
+
+            <div class="info-box" id="avl-info-box" style="display: none;">
+                <h3>AVL Balance Condition</h3>
+                <p>An AVL tree maintains balance using rotations. The balance factor of any node must be in the set $\{-1, 0, 1\}$. It is calculated as:
+                $$BF(N) = height(N_{\text{left}}) - height(N_{\text{right}})$$
+                When an operation violates this, the tree rebalances.</p>
+            </div>
+        </div>
+
+        <div id="vis-panel">
+            <div id="animation-status"></div>
+            <svg id="tree-svg"></svg>
+        </div>
+    </div>
+
+<script>
+class Node {
+    constructor(value, x = 0, y = 0) {
+        this.value = value;
+        this.left = null;
+        this.right = null;
+        this.height = 1;
+        this.x = x;
+        this.y = y;
+        this.parent = null;
+    }
+}
+
+class BinarySearchTree {
+    constructor() {
+        this.root = null;
+        this.isAVL = false;
+        this.animationQueue = [];
+        this.isAnimating = false;
+    }
+
+    // --- Core Methods ---
+    async insert(value) {
+        if (this.root === null) {
+            this.root = new Node(value);
+            this.animationQueue.push({ type: 'add', node: this.root, text: `Tree empty. Adding ${value} as root.`, sound: sounds.add });
+            await this.processAnimations();
+            return;
+        }
+
+        let path = [];
+        let current = this.root;
+        let parent = null;
+        while (current) {
+            path.push(current);
+            parent = current;
+            if (value < current.value) {
+                current = current.left;
+            } else if (value > current.value) {
+                current = current.right;
+            } else {
+                this.animationQueue.push({ type: 'path', path, highlightFinal: true, text: `Searching for ${value}...`, sound: sounds.traverse });
+                this.animationQueue.push({ type: 'highlight', node: current, class: 'node-highlight', text: `Value ${value} already exists.`, sound: sounds.error });
+                await this.processAnimations();
+                return;
+            }
+        }
+        
+        this.animationQueue.push({ type: 'path', path, highlightFinal: false, text: `Searching for position for ${value}...`, sound: sounds.traverse });
+
+        const newNode = new Node(value);
+        newNode.parent = parent;
+        if (value < parent.value) {
+            parent.left = newNode;
+        } else {
+            parent.right = newNode;
+        }
+        newNode.height = 1; // Initialize height for new node
+
+        this.animationQueue.push({ type: 'add', node: newNode, text: `Adding ${value}...`, sound: sounds.add });
+
+        if (this.isAVL) {
+            this.rebalancePath(parent);
+        }
+
+        await this.processAnimations();
+    }
+
+    async delete(value) {
+        let path = [];
+        let nodeToDelete = this.findNode(value, path);
+
+        this.animationQueue.push({ type: 'path', path, highlightFinal: !!nodeToDelete, text: `Searching for ${value}...`, sound: sounds.traverse });
+
+        if (!nodeToDelete) {
+            this.animationQueue.push({ type: 'text', text: `Value ${value} not found.`, sound: sounds.error });
+            await this.processAnimations();
+            return;
+        }
+
+        this.animationQueue.push({ type: 'highlight', node: nodeToDelete, class: 'node-delete', text: `Found ${value}. Preparing for deletion.`, sound: sounds.delete });
+        
+        let nodeToRebalanceFrom = this._deleteNode(nodeToDelete);
+
+        if (this.isAVL && nodeToRebalanceFrom) {
+            this.rebalancePath(nodeToRebalanceFrom);
+        }
+        
+        await this.processAnimations();
+    }
+    
+    _deleteNode(node) {
+        let parent = node.parent;
+        // Case 1 & 2: 0 or 1 child
+        if (!node.left || !node.right) {
+            let child = node.left || node.right;
+            if (child) child.parent = parent;
+            
+            if (!parent) this.root = child;
+            else if (parent.left === node) parent.left = child;
+            else parent.right = child;
+
+            this.animationQueue.push({ type: 'remove', node, text: `Removing node ${node.value}.`, sound: sounds.delete });
+            return parent;
+        }
+        // Case 3: Two children
+        else {
+            let successor = this._findInorderSuccessor(node.right);
+            this.animationQueue.push({ type: 'highlight', node: successor, class: 'node-highlight', text: `Finding successor: ${successor.value}.` });
+            
+            const originalNodeValue = node.value; 
+            
+            // Recursively delete the successor. This call will handle its removal animation.
+            let nodeToRebalanceFrom = this._deleteNode(successor); 
+            
+            // Now, update the value of the original node (the one with two children)
+            node.value = successor.value; 
+            this.animationQueue.push({ type: 'update', node, text: `Replacing ${originalNodeValue} with successor's value (${node.value}).`, sound: sounds.add});
+            
+            // Rebalancing should start from the node whose value was replaced (original `node`)
+            // or its ancestor, because its height might have changed.
+            // The `rebalancePath` will walk up from `nodeToRebalanceFrom` (successor's parent).
+            // If the original `node` is an ancestor of `nodeToRebalanceFrom`, it will be covered.
+            // If `nodeToRebalanceFrom` is null (successor was direct child and had no children),
+            // then `node` itself might be the starting point if it's the highest affected node.
+            return nodeToRebalanceFrom || node;
+        }
+    }
+
+    _findInorderSuccessor(node) {
+        while (node.left) {
+            node = node.left;
+        }
+        return node;
+    }
+
+    findNode(value, path = []) {
+        let current = this.root;
+        while (current) {
+            path.push(current);
+            if (value === current.value) return current;
+            current = value < current.value ? current.left : current.right;
+        }
+        return null;
+    }
+    
+    // --- AVL Methods ---
+    getHeight(node) { return node ? node.height : 0; }
+    updateHeight(node) { if(node) { node.height = 1 + Math.max(this.getHeight(node.left), this.getHeight(node.right)); }}
+    getBalanceFactor(node) { return node ? this.getHeight(node.left) - this.getHeight(node.right) : 0; }
+
+    rightRotate(y) {
+        let x = y.left; let T2 = x.right;
+        x.right = y; y.left = T2;
+        x.parent = y.parent; y.parent = x; if(T2) T2.parent = y;
+        if(!x.parent) this.root = x; else if(x.parent.left === y) x.parent.left = x; else x.parent.right = x;
+        this.updateHeight(y); this.updateHeight(x);
+        this.animationQueue.push({ type: 'rotate', pivot: x, text: `Right rotation on ${y.value}.`, sound: sounds.rotate });
+        return x;
+    }
+
+    leftRotate(x) {
+        let y = x.right; let T2 = y.left;
+        y.left = x; x.right = T2;
+        y.parent = x.parent; x.parent = y; if(T2) T2.parent = x;
+        if(!y.parent) this.root = y; else if(y.parent.left === x) y.parent.left = y; else y.parent.right = y;
+        this.updateHeight(x); this.updateHeight(y);
+        this.animationQueue.push({ type: 'rotate', pivot: y, text: `Left rotation on ${x.value}.`, sound: sounds.rotate });
+        return y;
+    }
+    
+    rebalancePath(node) {
+        let current = node;
+        while(current) {
+            this.updateHeight(current);
+            let balance = this.getBalanceFactor(current);
+            if (balance > 1) { // Left Heavy
+                if (this.getBalanceFactor(current.left) < 0) { current.left = this.leftRotate(current.left); }
+                current = this.rightRotate(current);
+            } else if (balance < -1) { // Right Heavy
+                if (this.getBalanceFactor(current.right) > 0) { current.right = this.rightRotate(current.right); }
+                current = this.leftRotate(current);
+            }
+            current = current.parent; 
+        }
+    }
+
+    // --- Drawing & Animation ---
+    calculatePositions(node, depth, x, xSpacing) {
+        if (!node) return x;
+        node.y = depth * 80 + 50;
+        if (node.left) x = this.calculatePositions(node.left, depth + 1, x, xSpacing);
+        node.x = x + xSpacing / 2; x += xSpacing;
+        if (node.right) x = this.calculatePositions(node.right, depth + 1, x, xSpacing);
+        return x;
+    }
+
+    render() {
+        const svg = document.getElementById('tree-svg');
+        svg.innerHTML = ''; 
+        if (!this.root) {
+            svg.removeAttribute('viewBox'); 
+            return;
+        }
+
+        const calculatedXSpacing = 60; // Keep fixed for now, viewBox handles responsiveness
+
+        this.calculatePositions(this.root, 0, 0, calculatedXSpacing);
+
+        const nodes = []; const edges = []; const queue = [this.root];
+        while (queue.length > 0) {
+            const node = queue.shift();
+            nodes.push(node);
+            if (node.left) { edges.push({ from: node, to: node.left }); queue.push(node.left); }
+            if (node.right) { edges.push({ from: node, to: node.right }); queue.push(node.right); }
+        }
+        
+        edges.forEach(edge => {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('class', 'edge');
+            line.setAttribute('x1', edge.from.x); line.setAttribute('y1', edge.from.y);
+            line.setAttribute('x2', edge.to.x); line.setAttribute('y2', edge.to.y);
+            svg.appendChild(line);
+        });
+
+        nodes.forEach(node => {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'node');
+            g.setAttribute('id', `node-${node.value}`);
+            g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('r', 22);
+            circle.style.fill = 'var(--node-color)';
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.textContent = node.value;
+            g.appendChild(circle); g.appendChild(text); svg.appendChild(g);
+        });
+        
+        try {
+            const bbox = svg.getBBox();
+            const padding = 20; 
+            svg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + 2 * padding} ${bbox.height + 2 * padding}`);
+        } catch (e) {
+            console.warn("Could not get SVG BBox, possibly empty tree:", e);
+        }
+    }
+
+    async processAnimations() {
+        if (this.isAnimating) return;
+        this.isAnimating = true;
+        setUIEnabled(false);
+        const animationDelay = 600;
+
+        for (const anim of this.animationQueue) {
+            clearHighlightClasses(); 
+            
+            updateStatus(anim.text);
+            playSound(anim.sound);
+
+            switch(anim.type) {
+                case 'path':
+                    for (let i = 0; i < anim.path.length; i++) {
+                        const el = document.getElementById(`node-${anim.path[i].value}`);
+                        if(el) {
+                           if (i === anim.path.length - 1 && anim.highlightFinal) el.classList.add('node-highlight');
+                           else el.classList.add('node-path');
+                        }
+                        await new Promise(res => setTimeout(res, animationDelay/2));
+                    }
+                    await new Promise(res => setTimeout(res, animationDelay));
+                    clearHighlightClasses(); 
+                    break;
+                case 'add':
+                case 'update':
+                case 'rotate':
+                    this.render(); 
+                    const targetNode = anim.node || anim.pivot;
+                    const nodeEl = document.getElementById(`node-${targetNode.value}`);
+                    if(nodeEl) {
+                        if (anim.type === 'add') nodeEl.classList.add('node-new');
+                        if (anim.type === 'rotate') nodeEl.classList.add('node-rotate');
+                        if (anim.type === 'update') nodeEl.classList.add('node-highlight'); 
+                    }
+                    await new Promise(res => setTimeout(res, animationDelay));
+                    break;
+                case 'remove':
+                     const removedEl = document.getElementById(`node-${anim.node.value}`);
+                     if(removedEl) removedEl.classList.add('node-remove');
+                     await new Promise(res => setTimeout(res, animationDelay));
+                    break;
+                case 'highlight':
+                    const highlightEl = document.getElementById(`node-${anim.node.value}`);
+                    if(highlightEl) highlightEl.classList.add(anim.class);
+                    await new Promise(res => setTimeout(res, animationDelay));
+                    break;
+                case 'text':
+                    await new Promise(res => setTimeout(res, animationDelay * 1.5));
+                    break;
+            }
+        }
+        
+        this.animationQueue = [];
+        clearHighlightClasses(); 
+        this.render(); 
+        updateStatus('');
+        this.isAnimating = false;
+        setUIEnabled(true);
+    }
+}
+
+// --- UI and Event Handling ---
+const tree = new BinarySearchTree();
+const addBtn = document.getElementById('add-btn');
+const deleteBtn = document.getElementById('delete-btn');
+const resetBtn = document.getElementById('reset-btn');
+const nodeValueInput = document.getElementById('node-value');
+const avlToggle = document.getElementById('avl-toggle');
+const avlInfoBox = document.getElementById('avl-info-box');
+const muteBtn = document.getElementById('mute-btn');
+const allControls = [addBtn, deleteBtn, resetBtn, nodeValueInput, avlToggle, muteBtn];
+let isMuted = false;
+
+const sounds = {
+    add: new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU0AAAAAAAAAT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PTw=="),
+    delete: new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQQAAAAAAEdtvv0U22/fdkwT"),
+    traverse: new Audio("data:audio/wav;base64,UklGRkYAAABXQVZFZm10IBAAAAABAAEAwF0AAIAAAAACABAAZGF0YQIAAADw/38="),
+    rotate: new Audio("data:audio/wav;base64,UklGRkYAAABXQVZFZm10IBAAAAABAAEAwF0AAIAAAAACABAAZGF0YQIAAADw/30="),
+    error: new Audio("data:audio/wav;base64,UklGRlYAAABXQVZFZm10IBAAAAABAAEAwF0AAIAAAAACABAAZGF0YQIAAADg/t3+3f7d/t3+3f7d/t3+3d3d/t3+3f7d/t3+3f7d/t3+3f7d/t3+3f7d/t3+3f7d/t3+3f7d/t0="),
+};
+
+function clearHighlightClasses() {
+    document.querySelectorAll('.node-highlight, .node-path, .node-delete, .node-rotate, .node-new, .node-remove')
+            .forEach(el => {
+                el.classList.remove('node-highlight', 'node-path', 'node-delete', 'node-rotate', 'node-new', 'node-remove');
+            });
+}
+
+function setUIEnabled(isEnabled) {
+    allControls.forEach(el => el.disabled = !isEnabled);
+    muteBtn.disabled = false; 
+    if (isEnabled) {
+        updateButtonStates(); 
+    }
+}
+
+function updateButtonStates() {
+    const hasValue = nodeValueInput.value.trim() !== '';
+    addBtn.disabled = !hasValue || tree.isAnimating;
+    deleteBtn.disabled = !hasValue || tree.isAnimating;
+}
+
+function updateStatus(text) {
+    const statusEl = document.getElementById('animation-status');
+    if (text) {
+        statusEl.textContent = text;
+        statusEl.classList.add('visible');
+    } else {
+        statusEl.classList.remove('visible');
+    }
+}
+
+function playSound(sound) {
+    if (!isMuted && sound) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.error("Sound play failed:", e));
+    }
+}
+
+async function handleAdd() {
+    if (tree.isAnimating) return; 
+    const value = parseInt(nodeValueInput.value, 10);
+    if (isNaN(value) || value < 1 || value > 99) {
+        updateStatus("Please enter a number between 1 and 99.");
+        playSound(sounds.error);
+        setTimeout(() => updateStatus(''), 2000); 
+        return;
+    }
+    await tree.insert(value);
+    nodeValueInput.value = '';
+    updateButtonStates();
+}
+
+async function handleDelete() {
+    if (tree.isAnimating) return; 
+    const value = parseInt(nodeValueInput.value, 10);
+    if (isNaN(value)) {
+        updateStatus("Please enter a number to delete.");
+        playSound(sounds.error);
+        setTimeout(() => updateStatus(''), 2000); 
+        return;
+    }
+    await tree.delete(value);
+    nodeValueInput.value = '';
+    updateButtonStates();
+}
+
+function handleReset() {
+    if (tree.isAnimating) return;
+    tree.root = null;
+    tree.animationQueue = []; 
+    
+    setUIEnabled(false); 
+
+    const initialNodes = [8, 4, 12, 2, 6, 10, 14, 1, 3, 5, 7];
+    
+    initialNodes.forEach(val => {
+        let current = tree.root;
+        let parent = null;
+        
+        if (!current) {
+            tree.root = new Node(val);
+            tree.root.height = 1; 
+            return;
+        }
+
+        while (current) {
+            parent = current;
+            if (val < current.value) {
+                current = current.left;
+            } else if (val > current.value) {
+                current = current.right;
+            } else {
+                return; 
+            }
+        }
+        
+        const newNode = new Node(val);
+        newNode.parent = parent;
+        if (val < parent.value) {
+            parent.left = newNode;
+        } else {
+            parent.right = newNode;
+        }
+        newNode.height = 1; 
+
+        if (tree.isAVL) {
+            let tempCurrent = parent;
+            while(tempCurrent) {
+                tree.updateHeight(tempCurrent);
+                let balance = tree.getBalanceFactor(tempCurrent);
+                if (balance > 1) { 
+                    if (tree.getBalanceFactor(tempCurrent.left) < 0) { tempCurrent.left = tree.leftRotate(tempCurrent.left); }
+                    tempCurrent = tree.rightRotate(tempCurrent);
+                } else if (balance < -1) { 
+                    if (tree.getBalanceFactor(tempCurrent.right) > 0) { tempCurrent.right = tree.rightRotate(tempCurrent.right); }
+                    tempCurrent = tree.leftRotate(tempCurrent);
+                }
+                tempCurrent = tempCurrent.parent;
+            }
+        }
+    });
+    
+    tree.render();
+    updateStatus('');
+    setUIEnabled(true);
+}
+
+function handleToggle() {
+    if (tree.isAnimating) return;
+    tree.isAVL = avlToggle.checked;
+    avlInfoBox.style.display = tree.isAVL ? 'block' : 'none';
+    tree.root = null; 
+    tree.render();
+    handleReset(); 
+}
+
+function handleMute() {
+    isMuted = !isMuted;
+    muteBtn.style.backgroundColor = isMuted ? 'var(--accent-color)' : '';
+    muteBtn.style.color = isMuted ? 'white' : '';
+}
+
+// Initialize
+addBtn.addEventListener('click', handleAdd);
+deleteBtn.addEventListener('click', handleDelete);
+resetBtn.addEventListener('click', handleReset);
+avlToggle.addEventListener('change', handleToggle);
+muteBtn.addEventListener('click', handleMute);
+nodeValueInput.addEventListener('input', updateButtonStates);
+nodeValueInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !addBtn.disabled) handleAdd();
+});
+
+// Resize Observer for responsive tree visualization
+const visPanel = document.getElementById('vis-panel');
+const resizeObserver = new ResizeObserver(entries => {
+    if (!tree.isAnimating) {
+        tree.render(); 
+    }
+});
+resizeObserver.observe(visPanel);
+
+// Initial state
+handleReset();
+updateButtonStates();
+
+</script>
+</body>
+</html>

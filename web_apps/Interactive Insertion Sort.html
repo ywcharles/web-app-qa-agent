@@ -1,0 +1,701 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Insertion Sort</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --md-primary-color: #3F51B5; /* Indigo */
+            --md-light-primary-color: #C5CAE9;
+            --md-dark-primary-color: #303F9F;
+            --md-accent-color: #FF4081; /* Pink */
+            --md-text-color: #212121;
+            --md-secondary-text-color: #616161; /* Darkened for better contrast */
+            --md-bg-color: #F5F5F5;
+            --md-card-bg-color: #FFFFFF;
+            --md-highlight-color: #FFECB3; /* Amber 100 */
+            --md-sorted-color: #DCEDC8; /* Light Green 100 */
+            --md-border-color: #E0E0E0;
+            --md-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 2px 10px rgba(0,0,0,0.08);
+            --md-pointer-color: #D32F2F; /* Red 700 */
+            --cell-size: 50px;
+            --cell-gap: 8px;
+            --animation-speed: 0.5s;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--md-bg-color);
+            color: var(--md-text-color);
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+        }
+
+        main {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        h1 {
+            font-weight: 400;
+            color: var(--md-dark-primary-color);
+            text-align: center;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        #info-btn {
+            background: none;
+            border: 2px solid var(--md-light-primary-color);
+            color: var(--md-secondary-text-color);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: serif;
+            font-size: 14px;
+            line-height: 20px;
+            padding: 0;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        #info-btn:hover {
+            background-color: var(--md-light-primary-color);
+            color: var(--md-dark-primary-color);
+        }
+
+        #info-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            max-width: 500px;
+            width: 90%;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        
+        #info-popup.visible {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        #info-popup h3 { margin-top: 0; color: var(--md-dark-primary-color); }
+        #info-popup p { line-height: 1.6; margin-bottom: 1rem; }
+        #info-popup button { float: right; }
+
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.4);
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        #overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+
+        .card {
+            background-color: var(--md-card-bg-color);
+            border-radius: 8px;
+            box-shadow: var(--md-shadow);
+            padding: 1.5rem;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .instructions {
+            text-align: center;
+            color: var(--md-secondary-text-color);
+            margin: -1rem 0 0 0;
+            font-size: 1em;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--md-secondary-text-color);
+            width: 100%;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        #progress-bar {
+            width: 100%;
+            max-width: 300px;
+            accent-color: var(--md-primary-color);
+        }
+
+        .user-input-container {
+            display: flex;
+            gap: 0.5rem;
+            flex-grow: 1;
+            justify-content: center;
+        }
+
+        #array-input {
+            padding: 0.75rem;
+            border: 1px solid var(--md-border-color);
+            border-radius: 4px;
+            font-family: 'Roboto Mono', monospace;
+            min-width: 150px;
+            transition: box-shadow 0.2s;
+        }
+        #array-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--md-primary-color);
+        }
+        #array-input.invalid {
+            border-color: var(--md-pointer-color);
+            box-shadow: 0 0 0 2px var(--md-pointer-color);
+        }
+        .control-buttons-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .control-button {
+            background-color: var(--md-primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 2px 2px rgba(0,0,0,0.15);
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-button:hover {
+            background-color: var(--md-dark-primary-color);
+            box-shadow: 0 4px 5px rgba(0,0,0,0.2);
+        }
+
+        .control-button:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 2px rgba(0,0,0,0.15);
+        }
+
+        .control-button:disabled {
+            background-color: #BDBDBD;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .control-button svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .visualization-container {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .array-panel {
+            flex: 3;
+            min-width: 320px;
+        }
+        
+        .side-panels-container {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .panel-title {
+            font-weight: 500;
+            color: var(--md-dark-primary-color);
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--md-border-color);
+        }
+
+        .array-visualization {
+            position: relative;
+            padding-top: 100px;
+            padding-bottom: 50px;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .array-wrapper {
+            display: inline-flex; /* Use inline-flex to shrink-wrap content */
+            position: relative;
+            padding: 4px;
+        }
+
+        .array-container {
+            display: flex;
+            gap: var(--cell-gap);
+        }
+
+        .array-cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--md-border-color);
+            background-color: var(--md-card-bg-color);
+            border-radius: 4px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.2em;
+            font-weight: 500;
+            position: relative;
+            transition: background-color var(--animation-speed) ease, border-color var(--animation-speed) ease, opacity var(--animation-speed) ease;
+        }
+        
+        .array-cell.sorted { background-color: var(--md-sorted-color); }
+        .array-cell.highlight { border-color: var(--md-accent-color); box-shadow: 0 0 0 2px var(--md-accent-color); }
+        .array-cell.placeholder { opacity: 0.3; background-color: var(--md-bg-color); }
+        
+        .cell-index {
+            position: absolute;
+            bottom: -25px;
+            font-size: 0.8em;
+            color: var(--md-secondary-text-color);
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .pointer {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--md-pointer-color);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9em;
+            font-weight: 500;
+            width: var(--cell-size);
+            text-align: center;
+            transition: transform var(--animation-speed) ease-in-out, opacity var(--animation-speed) ease;
+        }
+        
+        .pointer::after {
+            content: ''; display: block; width: 0; height: 0;
+            border-left: 6px solid transparent; border-right: 6px solid transparent;
+        }
+        #endSorted-ptr { top: 20px; }
+        #endSorted-ptr::after { border-top: 8px solid var(--md-pointer-color); margin-top: 4px; }
+        #index-ptr { bottom: 0; }
+        #index-ptr::after { border-bottom: 8px solid var(--md-pointer-color); margin-bottom: 4px; }
+        
+        .current-value-display {
+            position: absolute;
+            top: 0; left: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform var(--animation-speed) ease-in-out, opacity var(--animation-speed) ease;
+            opacity: 0;
+        }
+        .current-value-display.visible { opacity: 1; }
+        .current-value-label {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: var(--md-pointer-color);
+        }
+        .current-value-box {
+            width: var(--cell-size); height: var(--cell-size); margin-top: 4px;
+            display: flex; justify-content: center; align-items: center;
+            border: 2px solid var(--md-pointer-color); border-radius: 4px;
+            font-family: 'Roboto Mono', monospace; font-size: 1.2em; font-weight: 500;
+            background-color: var(--md-highlight-color);
+        }
+
+        .variables-table { width: 100%; border-collapse: collapse; }
+        .variables-table td {
+            padding: 0.75rem; font-family: 'Roboto Mono', monospace; font-size: 1.1em;
+            border-bottom: 1px solid var(--md-border-color);
+        }
+        .variables-table tr:last-child td { border-bottom: none; }
+        .variables-table td:first-child { font-weight: 500; color: var(--md-secondary-text-color); }
+        
+        .status-panel p {
+            margin: 0; line-height: 1.6; font-size: 1.1em;
+            min-height: 4.5em; /* Prevent layout shift */
+        }
+
+        @media (max-width: 1024px) {
+            .visualization-container {
+                flex-direction: column;
+            }
+            .array-panel, .side-panels-container {
+                width: 100%;
+                flex: none;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            body { padding: 0.5rem; }
+            .card { padding: 1rem; }
+            h1 { font-size: 1.5rem; }
+            .controls { flex-direction: column; }
+            .user-input-container { width: 100%; }
+            #array-input { width: 100%; box-sizing: border-box;}
+            .control-button { padding: 0.75rem 1rem; font-size: 0.9rem; }
+            :root { --cell-size: 40px; }
+            .array-visualization { padding-top: 90px; }
+        }
+
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div id="info-popup" class="card">
+        <h3>How Insertion Sort Works</h3>
+        <p>Insertion sort builds the final sorted array one item at a time. It iterates through the input elements, and for each element, it finds its correct position within the already-sorted part of the array and inserts it there.</p>
+        <p>This visualization highlights each comparison and shift, allowing you to follow the process step-by-step.</p>
+        <button id="close-info-btn" class="control-button">Got it</button>
+    </div>
+
+    <main>
+        <h1>Insertion Sort Visualization <button id="info-btn" title="How it works">ⓘ</button></h1>
+        <p class="instructions">Use the buttons below to step through the insertion sort algorithm.</p>
+        
+        <div class="controls card">
+            <div class="progress-container">
+                <span>Progress:</span>
+                <progress id="progress-bar" value="0" max="100"></progress>
+            </div>
+            <div class="user-input-container">
+                <input type="text" id="array-input" placeholder="e.g., 43, 27, 45, 24">
+                <button id="load-array-btn" class="control-button">Load</button>
+            </div>
+            <div class="control-buttons-group">
+                <button id="reset-btn" class="control-button" title="Reset">
+                    <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"></path></svg>
+                    <span>Reset</span>
+                </button>
+                <button id="prev-btn" class="control-button" title="Previous Step">
+                     <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path></svg>
+                    <span>Prev</span>
+                </button>
+                <button id="next-btn" class="control-button" title="Next Step">
+                    <span>Next</span>
+                    <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="visualization-container">
+            <div class="card array-panel">
+                <h2 class="panel-title">Array and Index View</h2>
+                <div class="array-visualization">
+                    <div class="array-wrapper" id="array-wrapper">
+                        <div class="current-value-display" id="current-value-display">
+                            <div class="current-value-label">currentValue</div>
+                            <div class="current-value-box" id="current-value-box"></div>
+                        </div>
+                        <div class="pointer" id="endSorted-ptr">endSorted</div>
+                        <div class="pointer" id="index-ptr">index</div>
+                        <div class="array-container" id="array-container"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="side-panels-container">
+                <div class="card variables-panel">
+                    <h2 class="panel-title">Variables and Values</h2>
+                    <table class="variables-table">
+                        <tbody>
+                            <tr><td>arr.length</td><td id="var-end"></td></tr>
+                            <tr><td>endSorted</td><td id="var-endSorted"></td></tr>
+                            <tr><td>currentValue</td><td id="var-currentValue"></td></tr>
+                            <tr><td>index</td><td id="var-index"></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card status-panel">
+                    <h2 class="panel-title">Current Action</h2>
+                    <p id="status-text"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let initialArray = [43, 27, 45, 24, 35, 47, 22, 48];
+            let states = [];
+            let currentStep = 0;
+            let isAnimating = false;
+            const animationDuration = 500; // ms, matches CSS
+
+            // DOM Elements
+            const arrayContainer = document.getElementById('array-container');
+            const endSortedPtr = document.getElementById('endSorted-ptr');
+            const indexPtr = document.getElementById('index-ptr');
+            const currentValueDisplay = document.getElementById('current-value-display');
+            const currentValueBox = document.getElementById('current-value-box');
+            
+            const varEnd = document.getElementById('var-end');
+            const varEndSorted = document.getElementById('var-endSorted');
+            const varCurrentValue = document.getElementById('var-currentValue');
+            const varIndex = document.getElementById('var-index');
+            const statusText = document.getElementById('status-text');
+            const progressBar = document.getElementById('progress-bar');
+            
+            const nextBtn = document.getElementById('next-btn');
+            const prevBtn = document.getElementById('prev-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const loadArrayBtn = document.getElementById('load-array-btn');
+            const arrayInput = document.getElementById('array-input');
+
+            const infoBtn = document.getElementById('info-btn');
+            const closeInfoBtn = document.getElementById('close-info-btn');
+            const infoPopup = document.getElementById('info-popup');
+            const overlay = document.getElementById('overlay');
+
+            function generateStates() {
+                const arr = [...initialArray];
+                states = [];
+
+                states.push({
+                    array: [...arr], endSorted: 1, currentValue: null, index: null,
+                    placeholderIndex: -1, compareIndex: -1,
+                    message: `Start. The first element, ${arr[0]}, is considered a sorted sub-array.`
+                });
+
+                for (let endSorted = 1; endSorted < arr.length; endSorted++) {
+                    let currentValue = arr[endSorted];
+                    let index = endSorted;
+
+                    states.push({
+                        array: [...arr], endSorted: endSorted, currentValue: currentValue, index: index,
+                        placeholderIndex: index, compareIndex: index - 1,
+                        message: `Select the next unsorted item, ${currentValue}, to insert into the sorted part.`
+                    });
+
+                    while (index > 0 && arr[index - 1] > currentValue) {
+                        states.push({
+                            array: [...arr], endSorted: endSorted, currentValue: currentValue, index: index,
+                            placeholderIndex: index, compareIndex: index - 1,
+                            message: `Compare ${currentValue} with ${arr[index-1]}. Since ${arr[index-1]} > ${currentValue}, shift ${arr[index-1]} right.`
+                        });
+
+                        arr[index] = arr[index - 1];
+                        index--;
+                    }
+                    
+                    if (index < endSorted) {
+                        states.push({
+                            array: [...arr], endSorted: endSorted, currentValue: currentValue, index: index,
+                            placeholderIndex: index, compareIndex: -1,
+                            message: `Found correct insertion point for ${currentValue} at index ${index}.`
+                        });
+                    } else {
+                         states.push({
+                            array: [...arr], endSorted: endSorted, currentValue: currentValue, index: index,
+                            placeholderIndex: -1, compareIndex: index - 1,
+                            message: `Compare ${currentValue} with ${arr[index-1]}. It's in the correct place.`
+                        });
+                    }
+
+                    arr[index] = currentValue;
+
+                    states.push({
+                        array: [...arr], endSorted: endSorted + 1, currentValue: null, index: null,
+                        placeholderIndex: -1, compareIndex: -1,
+                        message: `Insert ${currentValue}. The sorted sub-array now extends to index ${endSorted}.`
+                    });
+                }
+                
+                states.push({
+                    array: [...arr], endSorted: arr.length, currentValue: null, index: null,
+                    placeholderIndex: -1, compareIndex: -1,
+                    message: "The array is now fully sorted. Algorithm complete."
+                });
+            }
+
+            function renderState(step) {
+                const state = states[step];
+                const cellWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size'));
+                const cellGap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-gap'));
+                const totalCellWidth = cellWidth + cellGap;
+
+                arrayContainer.innerHTML = '';
+                state.array.forEach((val, i) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'array-cell';
+                    cell.textContent = val;
+
+                    if (i < state.endSorted && state.currentValue === null) cell.classList.add('sorted');
+                    if (i < state.endSorted -1 && state.currentValue !== null) cell.classList.add('sorted');
+                    if(i === state.compareIndex) cell.classList.add('highlight');
+                    if(i === state.placeholderIndex) cell.classList.add('placeholder');
+
+                    const indexLabel = document.createElement('div');
+                    indexLabel.className = 'cell-index';
+                    indexLabel.textContent = i;
+                    cell.appendChild(indexLabel);
+                    arrayContainer.appendChild(cell);
+                });
+
+                const halfCell = cellWidth / 2;
+                if (state.endSorted !== null && state.endSorted <= initialArray.length) {
+                    endSortedPtr.style.transform = `translateX(${state.endSorted * totalCellWidth - halfCell}px)`;
+                    endSortedPtr.style.opacity = 1;
+                } else {
+                    endSortedPtr.style.opacity = 0;
+                }
+                
+                if (state.index !== null) {
+                    indexPtr.style.transform = `translateX(${state.index * totalCellWidth - halfCell}px)`;
+                    indexPtr.style.opacity = 1;
+                } else {
+                    indexPtr.style.opacity = 0;
+                }
+
+                if (state.currentValue !== null) {
+                    currentValueBox.textContent = state.currentValue;
+                    currentValueDisplay.classList.add('visible');
+                    const targetIndex = state.placeholderIndex !== -1 ? state.placeholderIndex : state.index;
+                    currentValueDisplay.style.transform = `translateX(${targetIndex * totalCellWidth}px)`;
+                } else {
+                    currentValueDisplay.classList.remove('visible');
+                }
+                
+                varEnd.textContent = initialArray.length;
+                varEndSorted.textContent = state.endSorted ?? 'N/A';
+                varCurrentValue.textContent = state.currentValue ?? 'N/A';
+                varIndex.textContent = state.index ?? 'N/A';
+                
+                statusText.innerHTML = state.message;
+                progressBar.max = states.length - 1;
+                progressBar.value = currentStep;
+
+                updateButtonStates();
+            }
+            
+            function setButtonsDisabled(disabled) {
+                isAnimating = disabled;
+                resetBtn.disabled = disabled;
+                loadArrayBtn.disabled = disabled;
+                arrayInput.disabled = disabled;
+                updateButtonStates();
+            }
+
+            function updateButtonStates() {
+                if (isAnimating) {
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                } else {
+                    prevBtn.disabled = currentStep === 0;
+                    nextBtn.disabled = currentStep === states.length - 1;
+                }
+            }
+            
+            function createStepHandler(direction) {
+                return function() {
+                    const nextStep = currentStep + direction;
+                    if (nextStep >= 0 && nextStep < states.length && !isAnimating) {
+                        setButtonsDisabled(true);
+                        currentStep = nextStep;
+                        renderState(currentStep);
+                        setTimeout(() => setButtonsDisabled(false), animationDuration);
+                    }
+                }
+            }
+
+            function reset() {
+                if (isAnimating) return;
+                setButtonsDisabled(true);
+                currentStep = 0;
+                renderState(currentStep);
+                setTimeout(() => setButtonsDisabled(false), animationDuration);
+            }
+
+            function loadNewArray() {
+                const text = arrayInput.value.trim();
+                if (!text) return;
+                
+                const newArray = text.split(/[, ]+/)
+                    .filter(n => n !== '')
+                    .map(Number)
+                    .filter(n => !isNaN(n) && Number.isInteger(n));
+                
+                if (newArray.length > 0 && newArray.length <= 20) {
+                    arrayInput.classList.remove('invalid');
+                    initialArray = newArray;
+                    generateStates();
+                    reset();
+                } else {
+                    arrayInput.classList.add('invalid');
+                }
+            }
+
+            function toggleInfoPopup() {
+                infoPopup.classList.toggle('visible');
+                overlay.classList.toggle('visible');
+            }
+
+            // Event Listeners
+            nextBtn.addEventListener('click', createStepHandler(1));
+            prevBtn.addEventListener('click', createStepHandler(-1));
+            resetBtn.addEventListener('click', reset);
+            loadArrayBtn.addEventListener('click', loadNewArray);
+            arrayInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') loadNewArray();
+            });
+            infoBtn.addEventListener('click', toggleInfoPopup);
+            closeInfoBtn.addEventListener('click', toggleInfoPopup);
+            overlay.addEventListener('click', toggleInfoPopup);
+
+            // Initial setup
+            function init() {
+                arrayInput.placeholder = initialArray.join(', ');
+                generateStates();
+                renderState(0);
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

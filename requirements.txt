@@ -1,0 +1,4 @@
+playwright
+langchain
+langchain-google-genai
+dotenv
