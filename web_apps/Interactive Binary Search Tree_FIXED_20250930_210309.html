@@ -1,0 +1,579 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Binary Search Tree</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+
+    <style>
+        :root {
+            --primary-color: #6200EE;
+            --primary-variant: #3700B3;
+            --secondary-color: #03DAC6;
+            --background-color: #f5f5f5;
+            --surface-color: #ffffff;
+            --on-primary: #ffffff;
+            --on-surface: #000000;
+            --node-fill: #E0E0E0;
+            --node-stroke: #616161;
+            --node-text: #212121;
+            --error-bg: #FFEBEE;
+            --error-text: #C62828;
+            --success-bg: #E8F5E9;
+            --success-text: #2E7D32;
+            --shadow-1: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-2: 0 3px 6px rgba(0,0,0,0.15);
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            color: var(--on-surface);
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        .main-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .card {
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-1);
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        #controls {
+            flex: 1;
+            min-width: 280px;
+        }
+        
+        #visualization-container {
+            flex: 3;
+            min-width: 300px;
+            min-height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 500;
+            margin: 0 0 1rem 0;
+            color: var(--primary-variant);
+        }
+        
+        p.instructions {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .control-group {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--on-surface);
+        }
+
+        input[type="number"] {
+            font-family: 'Roboto', sans-serif;
+            font-size: 1rem;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        button {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            flex-grow: 1;
+        }
+        
+        #add-btn {
+            background-color: var(--primary-color);
+            color: var(--on-primary);
+        }
+        
+        #add-btn:hover {
+            background-color: var(--primary-variant);
+            box-shadow: var(--shadow-2);
+        }
+        
+        #reset-btn {
+            background-color: #f1f1f1;
+            color: var(--on-surface);
+        }
+
+        #reset-btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        #message-area {
+            margin-top: 1rem;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            min-height: 20px;
+        }
+
+        #message-area.visible {
+            opacity: 1;
+        }
+
+        #message-area.success {
+            background-color: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        #message-area.error {
+            background-color: var(--error-bg);
+            color: var(--error-text);
+        }
+        
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+        }
+        
+        .node circle {
+            fill: var(--node-fill);
+            stroke: var(--node-stroke);
+            stroke-width: 2px;
+            transition: fill 0.3s, transform 0.3s;
+        }
+
+        .node text {
+            font-family: 'Roboto', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            fill: var(--node-text);
+            pointer-events: none;
+        }
+        
+        .node:hover circle {
+            fill: var(--secondary-color);
+            transform: scale(1.1);
+        }
+
+        .edge {
+            stroke: var(--node-stroke);
+            stroke-width: 2px;
+        }
+        
+        .node.entering circle {
+            transform: scale(0.1);
+        }
+        .node.entering text {
+            opacity: 0;
+        }
+        .edge.entering {
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+        }
+
+        mjx-container { 
+            font-size: 1em !important; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <div class="main-layout">
+            <div id="controls" class="card">
+                <h1>Binary Search Tree</h1>
+                <p class="instructions">
+                    This visualization demonstrates the structure and modification of a Binary Search Tree (BST).
+                    <br><br>
+                    <strong>How to interact:</strong>
+                    <ul>
+                        <li><strong>Add a node:</strong> Enter a number and click 'Add'.</li>
+                        <li><strong>Delete a node:</strong> Click on any node in the tree.</li>
+                        <li><strong>Reset:</strong> Click 'Reset' to return to the initial tree.</li>
+                    </ul>
+                    The tree will always maintain the BST property: $left.value < parent.value < right.value$.
+                </p>
+                <div class="control-group">
+                    <div class="input-field">
+                        <label for="node-value-input">Node Value</label>
+                        <input type="number" id="node-value-input" placeholder="Enter a number to add..." aria-label="Enter a number to add to the tree">
+                    </div>
+                    <div class="button-group">
+                        <button id="add-btn" title="Add the number to the tree">Add Node</button>
+                        <button id="reset-btn" title="Clear the tree and restore the initial state">Reset Tree</button>
+                    </div>
+                </div>
+                <div id="message-area"></div>
+            </div>
+    
+            <div id="visualization-container" class="card">
+                <svg id="tree-svg"></svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Node {
+            constructor(value) {
+                this.value = value;
+                this.left = null;
+                this.right = null;
+            }
+        }
+
+        class BinarySearchTree {
+            constructor() {
+                this.root = null;
+            }
+
+            insert(value) {
+                const newNode = new Node(value);
+                if (this.root === null) {
+                    this.root = newNode;
+                    return true;
+                }
+                return this._insertNode(this.root, newNode);
+            }
+
+            _insertNode(node, newNode) {
+                if (newNode.value < node.value) {
+                    if (node.left === null) {
+                        node.left = newNode;
+                        return true;
+                    }
+                    return this._insertNode(node.left, newNode);
+                } else if (newNode.value > node.value) {
+                    if (node.right === null) {
+                        node.right = newNode;
+                        return true;
+                    }
+                    return this._insertNode(node.right, newNode);
+                } else {
+                    return false; // Duplicate value
+                }
+            }
+            
+            remove(value) {
+                this.root = this._removeNode(this.root, value);
+            }
+
+            _removeNode(node, value) {
+                if (node === null) return null;
+
+                if (value < node.value) {
+                    node.left = this._removeNode(node.left, value);
+                    return node;
+                } else if (value > node.value) {
+                    node.right = this._removeNode(node.right, value);
+                    return node;
+                } else {
+                    if (node.left === null && node.right === null) return null;
+                    if (node.left === null) return node.right;
+                    if (node.right === null) return node.left;
+                    
+                    const successor = this._findMinNode(node.right);
+                    node.value = successor.value;
+                    node.right = this._removeNode(node.right, successor.value);
+                    return node;
+                }
+            }
+            
+            _findMinNode(node) {
+                while(node.left !== null) {
+                    node = node.left;
+                }
+                return node;
+            }
+
+            find(value) {
+                let current = this.root;
+                while (current !== null) {
+                    if (value < current.value) {
+                        current = current.left;
+                    } else if (value > current.value) {
+                        current = current.right;
+                    } else {
+                        return current;
+                    }
+                }
+                return null;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const svg = document.getElementById('tree-svg');
+            const addBtn = document.getElementById('add-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const valueInput = document.getElementById('node-value-input');
+            const messageArea = document.getElementById('message-area');
+
+            let bst = new BinarySearchTree();
+            const initialValues = [8, 3, 12, 1, 5, 9, 14];
+            
+            const nodeRadius = 22;
+            const levelHeight = 80;
+            let messageTimeout;
+
+            function showMessage(msg, type = 'success') {
+                clearTimeout(messageTimeout);
+                messageArea.textContent = msg;
+                messageArea.className = ''; // Reset classes
+                messageArea.classList.add(type, 'visible');
+                
+                messageTimeout = setTimeout(() => {
+                    messageArea.classList.remove('visible');
+                }, 3000);
+            }
+
+            function initializeTree() {
+                bst = new BinarySearchTree();
+                initialValues.forEach(val => bst.insert(val));
+                drawTree();
+            }
+
+            function getTreeNodesAndEdges(node, x, y, xOffset, level, nodes = [], edges = []) {
+                if (!node) return { nodes, edges };
+
+                const id = `node-${node.value}`;
+                nodes.push({ id, value: node.value, x, y });
+
+                if (node.left) {
+                    const childX = x - xOffset;
+                    const childY = y + levelHeight;
+                    edges.push({ from: id, to: `node-${node.left.value}`, x1: x, y1: y, x2: childX, y2: childY });
+                    getTreeNodesAndEdges(node.left, childX, childY, xOffset / 2, level + 1, nodes, edges);
+                }
+
+                if (node.right) {
+                    const childX = x + xOffset;
+                    const childY = y + levelHeight;
+                    edges.push({ from: id, to: `node-${node.right.value}`, x1: x, y1: y, x2: childX, y2: childY });
+                    getTreeNodesAndEdges(node.right, childX, childY, xOffset / 2, level + 1, nodes, edges);
+                }
+                return { nodes, edges };
+            }
+
+            function drawTree() {
+                const { width, height } = svg.getBoundingClientRect();
+                svg.innerHTML = ''; 
+
+                if (!bst.root) return;
+
+                // Adjust initial xOffset to ensure nodes are not too cramped or spread out,
+                // especially important for responsiveness.
+                // Ensures a minimum horizontal separation even on small screens.
+                const initialXOffset = Math.max(width / 4, nodeRadius * 3); 
+
+                const { nodes, edges } = getTreeNodesAndEdges(bst.root, width / 2, 50, initialXOffset, 1);
+                
+                if(nodes.length === 0) return;
+
+                const minX = Math.min(...nodes.map(n => n.x));
+                const minY = Math.min(...nodes.map(n => n.y));
+                const maxX = Math.max(...nodes.map(n => n.x));
+                const maxY = Math.max(...nodes.map(n => n.y));
+                
+                // Add padding to the viewBox to ensure nodes at the edges are fully visible
+                // and clickable, improving responsiveness.
+                const padding = nodeRadius * 2; 
+                const finalMinX = minX - padding;
+                const finalMinY = minY - padding;
+                const finalMaxX = maxX + padding;
+                const finalMaxY = maxY + padding;
+
+                const viewBoxWidth = Math.max(finalMaxX - finalMinX, 1);
+                const viewBoxHeight = Math.max(finalMaxY - finalMinY, 1);
+                
+                svg.setAttribute('viewBox', `${finalMinX} ${finalMinY} ${viewBoxWidth} ${viewBoxHeight}`);
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+                const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                svg.appendChild(edgeGroup);
+                svg.appendChild(nodeGroup);
+                
+                edges.forEach(edge => {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', edge.x1);
+                    line.setAttribute('y1', edge.y1);
+                    line.setAttribute('x2', edge.x2);
+                    line.setAttribute('y2', edge.y2);
+                    line.classList.add('edge', 'entering');
+                    edgeGroup.appendChild(line);
+                    setTimeout(() => {
+                        line.style.transition = 'stroke-dashoffset 0.5s ease-out';
+                        line.style.strokeDashoffset = 0;
+                    }, 10);
+                });
+
+                nodes.forEach(nodeData => {
+                    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    group.setAttribute('class', 'node');
+                    group.setAttribute('transform', `translate(${nodeData.x}, ${nodeData.y})`);
+                    group.dataset.value = nodeData.value;
+                    
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('r', nodeRadius);
+                    
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.textContent = nodeData.value;
+                    
+                    group.appendChild(circle);
+                    group.appendChild(text);
+                    nodeGroup.appendChild(group);
+
+                    group.addEventListener('click', () => {
+                        group.style.transition = 'transform 0.3s ease-in, opacity 0.3s ease-in';
+                        group.style.transform = `translate(${nodeData.x}, ${nodeData.y}) scale(0.1)`;
+                        group.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            bst.remove(nodeData.value);
+                            drawTree();
+                        }, 300);
+                    });
+
+                    group.classList.add('entering');
+                    setTimeout(() => {
+                        group.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s';
+                        circle.style.transform = 'scale(1)';
+                        text.style.opacity = 1;
+                    }, 10);
+                });
+            }
+
+            function handleAdd() {
+                const valueStr = valueInput.value;
+                if (!valueStr) {
+                    showMessage('Please enter a number.', 'error');
+                    return;
+                }
+                const value = parseInt(valueStr, 10);
+                if (isNaN(value)) {
+                    showMessage('Invalid input. Please enter a number.', 'error');
+                    return;
+                }
+                if (bst.find(value)) {
+                     showMessage(`Node with value ${value} already exists.`, 'error');
+                     return;
+                }
+                
+                bst.insert(value);
+                drawTree();
+                valueInput.value = '';
+                showMessage(`Added node ${value}.`);
+            }
+            
+            addBtn.addEventListener('click', handleAdd);
+            valueInput.addEventListener('keydown', (e) => {
+                if(e.key === 'Enter') {
+                    handleAdd();
+                }
+            });
+
+            resetBtn.addEventListener('click', () => {
+                initializeTree();
+                showMessage('Tree has been reset.');
+            });
+
+            initializeTree();
+            // The resize listener is already present and correctly calls drawTree,
+            // which recalculates node positions based on current SVG dimensions
+            // and adjusts the viewBox. The added padding and initialXOffset adjustment
+            // further enhance its responsiveness.
+            window.addEventListener('resize', drawTree);
+        });
+    </script>
+</body>
+</html>
