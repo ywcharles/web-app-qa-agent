@@ -25,7 +25,7 @@ class WebQAAgent:
     def __init__(self, headless: bool = True):
         self.headless = headless
         self.model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash", google_api_key=GEMINI_API_KEY
+            model="gemini-2.5-pro", google_api_key=GEMINI_API_KEY
         )
         self.screenshots_dir = os.path.join(ROOT_DIR, "screenshots")
         self.current_page = ""
@@ -90,16 +90,23 @@ class WebQAAgent:
             except Exception as e:
                 return f"Failed to get text from {selector}: {str(e)}"
 
-        memory = ConversationBufferMemory(return_messages=True)
         tools = [screenshot_webapp, grab_html, click_element, fill_input, get_text]
         agent = create_tool_calling_agent(self.model, tools, qa_agent_prompt)
-        self.chain = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
+        self.chain = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.browser.close()
         self.playwright.stop()
+
+    def analyzed_ui(self):
+        prompt = (
+            "Take a screenshot of the current webpage and look into its HTML content. Are there any issues with the web page UI?"
+        )
+
+        response = self.chain.invoke({"input": prompt})
+        return response["output"]
         
     def generate_test_plan(self, max_steps: int = 10) -> str:
         response = self.chain.invoke(
