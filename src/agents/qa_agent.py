@@ -3,6 +3,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.messages import HumanMessage
+from langchain.memory import ConversationBufferMemory
 from dotenv import load_dotenv
 
 import base64
@@ -29,7 +30,7 @@ class WebQAAgent:
         self.screenshots_dir = os.path.join(ROOT_DIR, "screenshots")
         self.current_page = ""
 
-    def navigate(self, url: str): 
+    def navigate(self, url: str):
         self.current_page = url
         self.page.goto(url)
         self.page_title = self.page.title()
@@ -89,16 +90,17 @@ class WebQAAgent:
             except Exception as e:
                 return f"Failed to get text from {selector}: {str(e)}"
 
+        memory = ConversationBufferMemory(return_messages=True)
         tools = [screenshot_webapp, grab_html, click_element, fill_input, get_text]
         agent = create_tool_calling_agent(self.model, tools, qa_agent_prompt)
-        self.chain = AgentExecutor(agent=agent, tools=tools, verbose=True)
+        self.chain = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.browser.close()
         self.playwright.stop()
-
+        
     def generate_test_plan(self, max_steps: int = 10) -> str:
         response = self.chain.invoke(
             {
@@ -116,7 +118,7 @@ class WebQAAgent:
                 "3. Click the 'Delete Node' button\n\n"
             }
         )
-         
+
         return response["output"]
 
     def parse_plan(self, plan: str) -> List[str]:
@@ -128,8 +130,7 @@ class WebQAAgent:
         for step in plan_steps:
             response = self.chain.invoke(
                 {
-                    "input": 
-                    f"Task: {step}\n\n"
+                    "input": f"Task: {step}\n\n"
                     "1. Execute the task\n"
                     "2. Take a screenshot of the post task execution state\n"
                     "3. Check the current HTML of the application\n"
@@ -145,3 +146,24 @@ class WebQAAgent:
             task_outputs.append(response)
 
         return task_outputs
+
+    def run_test_suite(self, max_steps: int = 10) -> str:
+        """Generate a test plan and immediately execute it step by step."""
+
+        response = self.chain.invoke(
+            {
+                "input": (
+                    f"Step 1: Generate a numbered test plan (max {max_steps} steps) for this app.\n"
+                    "Step 2: Execute the plan sequentially.\n"
+                    "For each step:\n"
+                    "- Execute the action (use tools if needed)\n"
+                    "- Take a screenshot\n"
+                    "- Check the HTML for expected changes\n"
+                    "- Verify if UI/state updated correctly\n"
+                    "- For each task report in the following format:\n"
+                    "  Executed Task | State updated: true/false | UI flaws: true/false | Comments"
+                )
+            }
+        )
+
+        return response["output"]
