@@ -3,7 +3,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.messages import HumanMessage
-from langchain.memory import ConversationBufferMemory
+from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 from dotenv import load_dotenv
 
 import base64
@@ -92,6 +92,7 @@ class WebQAAgent:
 
         tools = [screenshot_webapp, grab_html, click_element, fill_input, get_text]
         agent = create_tool_calling_agent(self.model, tools, qa_agent_prompt)
+        # TODO add structure output
         self.chain = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
         return self
@@ -100,77 +101,59 @@ class WebQAAgent:
         self.browser.close()
         self.playwright.stop()
 
-    def analyzed_ui(self):
+    def analyze_ui(self):
         prompt = (
             "Take a screenshot of the current webpage and look into its HTML content. Are there any issues with the web page UI?"
         )
 
         response = self.chain.invoke({"input": prompt})
         return response["output"]
-        
-    def generate_test_plan(self, max_steps: int = 10) -> str:
-        response = self.chain.invoke(
-            {
-                "input": "Take a screenshot of the web application and parse its HTML content. "
-                "Analyze the code and UI to create a comprehensive test plan. "
-                f"Create a numbered list of specific with no more than {max_steps} actionable test tasks. "
-                "Each task should be atomic and executable in sequence. "
-                "Format your response as a clean numbered list, one test per line. "
-                "Focus on testing key functionality, edge cases, and UI validation."
-                "Return a numbered list, do not return any text besides the list."
-                "Everything in the output must be a numbered step\n"
-                "Output Example:\n"
-                "1. Click the 'Add Node' button with value 5\n"
-                "2. Verify node 5 appears in the tree\n"
-                "3. Click the 'Delete Node' button\n\n"
-            }
+
+    from langchain.output_parsers import StructuredOutputParser, ResponseSchema
+
+    def generate_improved_html(self, label: str = "corrected"):
+        """Generate a corrected version of the current HTML and save it to /fixed-webapps."""
+
+        # Define the structure you want
+        response_schemas = [
+            ResponseSchema(
+                name="report",
+                description="A concise report of detected UI issues or bugs and what was changed to fix them."
+            ),
+            ResponseSchema(
+                name="html",
+                description="The corrected HTML code after fixing UI issues."
+            ),
+        ]
+        output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
+        format_instructions = output_parser.get_format_instructions()
+
+        # Main prompt
+        prompt = (
+            "Take a screenshot of the current webpage and look into its HTML content. "
+            "Identify any issues with the web page UI (alignment, missing elements, contrast, structure, etc.). "
+            "If there are issues, generate corrected HTML that fixes them. "
+            "Otherwise, keep the original HTML unchanged.\n\n"
+            f"Output must follow this format:\n{format_instructions}"
         )
 
-        return response["output"]
+        # Run the agent chain
+        response = self.chain.invoke({"input": prompt})
+        raw_output = response["output"]
 
-    def parse_plan(self, plan: str) -> List[str]:
-        steps = plan.split("\n")
-        return steps
+        # Try to parse into structured fields
+        try:
+            parsed = output_parser.parse(raw_output)
+        except Exception as e:
+            print(f"⚠️ Failed to parse structured output: {e}")
+            parsed = {"report": raw_output, "html": ""}
 
-    def execute_plan(self, plan_steps: List[str]):
-        task_outputs = []
-        for step in plan_steps:
-            response = self.chain.invoke(
-                {
-                    "input": f"Task: {step}\n\n"
-                    "1. Execute the task\n"
-                    "2. Take a screenshot of the post task execution state\n"
-                    "3. Check the current HTML of the application\n"
-                    "4. See if the result from the task execution was what you expected\n"
-                    "5. Check for any UI issues in the new states"
-                    "Output the following: \n"
-                    "- Executed Task\n"
-                    "- State was updated as expected: true or false"
-                    "- UI contains flaws: true or false"
-                    "- Comments in case state or UI has bugs"
-                }
-            )
-            task_outputs.append(response)
+        # Extract results
+        report = parsed.get("report", "")
+        corrected_html = parsed.get("html", "")
 
-        return task_outputs
+        return {
+            "report": report,
+            "html": corrected_html
+        }
 
-    def run_test_suite(self, max_steps: int = 10) -> str:
-        """Generate a test plan and immediately execute it step by step."""
-
-        response = self.chain.invoke(
-            {
-                "input": (
-                    f"Step 1: Generate a numbered test plan (max {max_steps} steps) for this app.\n"
-                    "Step 2: Execute the plan sequentially.\n"
-                    "For each step:\n"
-                    "- Execute the action (use tools if needed)\n"
-                    "- Take a screenshot\n"
-                    "- Check the HTML for expected changes\n"
-                    "- Verify if UI/state updated correctly\n"
-                    "- For each task report in the following format:\n"
-                    "  Executed Task | State updated: true/false | UI flaws: true/false | Comments"
-                )
-            }
-        )
-
-        return response["output"]
