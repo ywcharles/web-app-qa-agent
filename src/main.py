@@ -10,13 +10,8 @@ html_file = os.path.join(project_root, "web_apps", "Insertion Sort_ The Bookshel
 
 with WebQAAgent(False) as agent:
     agent.navigate(f"file://{html_file}")
-    # plan = agent.generate_test_plan(max_steps=5)
-    # print(plan)
-    # plan_steps = agent.parse_plan(plan)
-    # print(plan_steps)
-    # steps_outputs = agent.execute_plan(plan_steps=plan_steps)
-    # for s in steps_outputs:
-    #     print(s)
-    
-    ui_analysis = agent.analyzed_ui()
-    print(ui_analysis)
+    # TODO do the entire folder
+    response = agent.generate_improved_html()
+    report, html = response.values()
+    print(report)
+    print(html)
