@@ -1,4 +1,5 @@
 playwright
 langchain
 langchain-google-genai
+langchain-core
 dotenv

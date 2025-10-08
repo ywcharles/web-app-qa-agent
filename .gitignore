@@ -1,4 +1,7 @@
 screenshots/
+fixed-webapps*/
+web_apps/
+old-fixed_webapps/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
